@@ -70,7 +70,8 @@ export function createJobLifecycleManagerComponent(
       return new Set(createdJobs.keys())
     },
     async start() {
-        console.log('STARTING!');
+      this.setDesiredJobs(new Set(["substreamsCli"]))
+      console.log("STARTING!")
     },
     async stop() {
       for (const [name, job] of createdJobs) {

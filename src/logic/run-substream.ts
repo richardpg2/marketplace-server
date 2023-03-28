@@ -1,4 +1,5 @@
 import { ILoggerComponent } from "@well-known-components/interfaces"
+import { exec } from "child_process"
 import { closeSync, openSync } from "fs"
 import * as fs from "fs/promises"
 import { dirname } from "path"
@@ -32,14 +33,16 @@ export async function runSubstream(
   //   "substreams.yaml" \
   //   db_out --development-mode
 
-  const childArg0 = `substreams-sink-postgres run`
+  const childArg0 = `substreams-sink-postgres`
   const childArguments: string[] = [
+    "run",
     "psql://juanma:insecure-change-me-in-prod@localhost:5432/substreams_example?sslmode=disable",
     "substreams.yaml",
     "db_out",
     "--development-mode",
   ]
 
+  // exec("export PATH=$PATH:$(go env GOPATH)/bin")
   const { exitPromise, child } = execCommand(logger, childArg0, childArguments, process.env as any, "./")
   // const { exitPromise, child } = execCommand(logger, childArg0, childArguments, process.env as any, options.projectPath)
 
