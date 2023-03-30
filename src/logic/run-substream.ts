@@ -37,13 +37,15 @@ export async function runSubstream(
   const childArguments: string[] = [
     "run",
     "psql://juanma:insecure-change-me-in-prod@localhost:5432/substreams_example?sslmode=disable",
-    "substreams.yaml",
+    "polygon.streamingfast.io:443",
+    "https://github.com/decentraland/decentraland-substreams/releases/download/0.0.1/decentraland-substreams-v0.1.0.spkg",
     "db_out",
     "--development-mode",
   ]
 
   // exec("export PATH=$PATH:$(go env GOPATH)/bin")
   const { exitPromise, child } = execCommand(logger, childArg0, childArguments, process.env as any, "./")
+  console.log("executing command")
   // const { exitPromise, child } = execCommand(logger, childArg0, childArguments, process.env as any, options.projectPath)
 
   if (options.timeout) {

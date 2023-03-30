@@ -25,7 +25,9 @@ function createCliJob(logger: ILoggerComponent.ILogger) {
         await runSubstream(logger, { logFile: "logs.txt", outDirectory: "./" })
       }
     },
-    async stop() {},
+    async stop() {
+      stopped = true
+    },
   }
 }
 
