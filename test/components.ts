@@ -22,7 +22,10 @@ export const test = createRunner<TestComponents>({
 async function initComponents(): Promise<TestComponents> {
   const components = await originalInitComponents()
 
-  const { config } = components
+  // Mock the start function to avoid connecting to a local database
+
+  const { config, database, synchronizationJobManager } = components
+  jest.spyOn(database, "start").mockResolvedValue(undefined)
 
   return {
     ...components,

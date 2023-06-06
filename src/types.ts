@@ -6,6 +6,11 @@ import type {
   IBaseComponent,
   IMetricsComponent,
 } from "@well-known-components/interfaces"
+import { IPgComponent } from "@well-known-components/pg-component"
+import { JobLifecycleManagerComponent } from "./job-lifecycle-manager"
+import { ICatalogComponent } from "./logic/catalog/types"
+import { ICollectionsComponent } from "./logic/collections/types"
+import { IItemsComponent } from "./logic/items/types"
 import { metricDeclarations } from "./metrics"
 
 export type GlobalContext = {
@@ -19,6 +24,11 @@ export type BaseComponents = {
   server: IHttpServerComponent<GlobalContext>
   fetch: IFetchComponent
   metrics: IMetricsComponent<keyof typeof metricDeclarations>
+  database: IPgComponent
+  items: IItemsComponent
+  collections: ICollectionsComponent
+  catalog: ICatalogComponent
+  synchronizationJobManager: JobLifecycleManagerComponent
 }
 
 // components used in runtime
@@ -44,3 +54,14 @@ export type HandlerContextWithPath<
 >
 
 export type Context<Path extends string = any> = IHttpServerComponent.PathAwareContext<GlobalContext, Path>
+
+export enum StatusCode {
+  OK = 200,
+  CREATED = 201,
+  BAD_REQUEST = 400,
+  UNAUTHORIZED = 401,
+  NOT_FOUND = 404,
+  LOCKED = 423,
+  CONFLICT = 409,
+  ERROR = 500,
+}
