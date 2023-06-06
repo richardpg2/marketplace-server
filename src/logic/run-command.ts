@@ -30,7 +30,9 @@ export function execCommand(
     logger.log(data)
   })
 
-  child.stderr?.on("data", (data) => logger.error(data))
+  child.stderr?.on("data", (data) => {
+    logger.log(data)
+  })
 
   return { exitPromise: exitFuture, child }
 }

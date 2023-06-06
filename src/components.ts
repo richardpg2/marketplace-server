@@ -15,17 +15,17 @@ import { runSubstream } from "./logic/run-substream"
 import { ILoggerComponent } from "@well-known-components/interfaces"
 // import { ILoggerComponent } from "@well-known-components/interfaces/dist/components/logger"
 
-// function runCliCommand() {}
-
-function createCliJob(logger: ILoggerComponent.ILogger) {
+function createCliJob(config: Pick<AppComponents, "config">, logger: ILoggerComponent.ILogger) {
   let stopped = false
   return {
     async start() {
       while (!stopped) {
-        await runSubstream(logger, { logFile: "logs.txt", outDirectory: "./" })
+        await runSubstream(config, logger, { logFile: "logs.txt", outDirectory: "./" })
       }
     },
-    async stop() {},
+    async stop() {
+      stopped = true
+    },
   }
 }
 
@@ -47,8 +47,8 @@ export async function initComponents(): Promise<AppComponents> {
     { logs },
     {
       jobManagerName: "SynchronizationJobManager",
-      createJob(contentServer) {
-        return createCliJob(logs.getLogger("log"))
+      createJob() {
+        return createCliJob({ config }, logs.getLogger("log"))
       },
     }
   )
