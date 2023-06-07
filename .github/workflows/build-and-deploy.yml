@@ -14,7 +14,6 @@ jobs:
       QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
       QUAY_TOKEN: ${{ secrets.QUAY_TOKEN }}
   deploy:
-    id: deploy
     uses: decentraland/dcl-deploy-action@main
     strategy:
       matrix:
