@@ -14,13 +14,19 @@ jobs:
       QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
       QUAY_TOKEN: ${{ secrets.QUAY_TOKEN }}
   deploy:
-    uses: decentraland/dcl-deploy-action@main
     strategy:
       matrix:
         network: [eth, polygon]
         env: [dev, stg]
-    with:
-      dockerImage: "quay.io/decentraland/dapps-substreams-server:${{ github.sha }}"
-      serviceName: "dapps-${{ matrix.network }}-substreams-server"
-      env: ${{ matrix.env }}
-      token: ${{ secrets.GITHUB_TOKEN }}
+    name: "Deploy to: ${{ matrix.env }}"
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.env }}
+    steps:
+      - name: Trigger deployment
+        id: deploy
+        uses: decentraland/dcl-deploy-action@main
+        with:
+          dockerImage: "quay.io/decentraland/dapps-substreams-server:${{ github.sha }}"
+          serviceName: "dapps-${{ matrix.network }}-substreams-server"
+          env: ${{ matrix.env }}
+          token: ${{ secrets.GITHUB_TOKEN }}
