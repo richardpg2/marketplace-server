@@ -7,11 +7,8 @@ jobs:
   build:
     name: "Build & publish: ${{github.ref_name}}"
     uses: decentraland/actions/.github/workflows/build-quay-main.yml@main
-    strategy:
-      matrix:
-        network: [eth, polygon]
     with:
-      service-name: dapps-${{ matrix.network }}-substreams-server
+      service-name: dapps-substreams-server
       docker-tag: "${{ github.ref_name }}"
     secrets:
       QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
