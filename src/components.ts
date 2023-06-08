@@ -1,4 +1,3 @@
-import path from "path"
 import { createDotEnvConfigComponent } from "@well-known-components/env-config-provider"
 import { createServerComponent, createStatusCheckComponent } from "@well-known-components/http-server"
 import { createLogComponent } from "@well-known-components/logger"

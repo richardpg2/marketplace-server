@@ -2,7 +2,6 @@ import { HandlerContextWithPath, StatusCode } from "../../types"
 
 export async function itemsHandler(context: Pick<HandlerContextWithPath<"items", "/items">, "url" | "components">) {
   const {
-    url,
     components: { items },
   } = context
 
