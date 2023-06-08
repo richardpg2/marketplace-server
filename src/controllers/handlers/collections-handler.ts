@@ -4,7 +4,6 @@ export async function collectionsHandler(
   context: Pick<HandlerContextWithPath<"collections", "/collections">, "url" | "components">
 ) {
   const {
-    url,
     components: { collections },
   } = context
 

@@ -1,12 +1,10 @@
-import SQL, { SQLStatement } from "sql-template-strings"
-
 import { AppComponents } from "../../types"
 import { IItemsComponent } from "./types"
 
 export async function createItemsComponent(components: Pick<AppComponents, "database">): Promise<IItemsComponent> {
   const { database } = components
 
-  async function fetch(options?: {}): Promise<any[]> {
+  async function fetch(): Promise<any[]> {
     const client = await database.getPool().connect()
     try {
     } catch (error) {

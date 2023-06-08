@@ -4,7 +4,6 @@ export async function catalogHandler(
   context: Pick<HandlerContextWithPath<"catalog", "/catalog">, "url" | "components">
 ) {
   const {
-    url,
     components: { catalog },
   } = context
 

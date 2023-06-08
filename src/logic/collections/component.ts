@@ -1,5 +1,3 @@
-import SQL, { SQLStatement } from "sql-template-strings"
-
 import { AppComponents } from "../../types"
 import { ICollectionsComponent } from "./types"
 
@@ -8,7 +6,7 @@ export async function createCollectionsComponent(
 ): Promise<ICollectionsComponent> {
   const { database } = components
 
-  async function fetch(options?: {}): Promise<any[]> {
+  async function fetch(): Promise<any[]> {
     const client = await database.getPool().connect()
     try {
     } catch (error) {
