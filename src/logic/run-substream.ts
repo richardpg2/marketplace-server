@@ -109,20 +109,16 @@ function getEndpointForNetwork(network: string) {
 }
 
 async function getConfigVars(config: IConfigComponent) {
-  try {
-    const DB_CONNECTION_STRING = await buildDbConnectionString(config)
-    const network = (await config.getString("NETWORK")) || DEFAULT_NETWORK
-    const BINARY_OS = (await config.getString("BINARY_OS")) || DEFAULT_BINARY_OS
-    const RELEASE_URI = (await config.getString("SPKG_PATH")) || DEFAULT_DCL_SUBSTREAMS_RELEASE
+  const DB_CONNECTION_STRING = await buildDbConnectionString(config)
+  const network = (await config.getString("NETWORK")) || DEFAULT_NETWORK
+  const BINARY_OS = (await config.getString("BINARY_OS")) || DEFAULT_BINARY_OS
+  const RELEASE_URI = (await config.getString("SPKG_PATH")) || DEFAULT_DCL_SUBSTREAMS_RELEASE
 
-    return {
-      DB_CONNECTION_STRING,
-      FIREHOSE_SERVER_URI: `${getEndpointForNetwork(network)}.streamingfast.io:443`,
-      RELEASE_URI,
-      BINARY_OS,
-    }
-  } catch (error) {
-    throw error
+  return {
+    DB_CONNECTION_STRING,
+    FIREHOSE_SERVER_URI: `${getEndpointForNetwork(network)}.streamingfast.io:443`,
+    RELEASE_URI,
+    BINARY_OS,
   }
 }
 
