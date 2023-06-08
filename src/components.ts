@@ -12,14 +12,27 @@ import { createCatalogComponent } from "./logic/catalog/component"
 import { createJobLifecycleManagerComponent } from "./job-lifecycle-manager"
 import { runSubstream } from "./logic/run-substream"
 import { ILoggerComponent } from "@well-known-components/interfaces"
-// import { ILoggerComponent } from "@well-known-components/interfaces/dist/components/logger"
+
+// Sets a maximun amount of times the job can be restarted to quickly to avoid infinite loops
+const MAX_JOB_RESTARTS = 5
+const RESTART_DELAY = 60000 // 60 seconds
 
 function createCliJob(config: Pick<AppComponents, "config">, logger: ILoggerComponent.ILogger) {
+  let runs = 0
+  let startTime: number | null = null
   let stopped = false
   return {
     async start() {
-      while (!stopped) {
+      while (!stopped && runs <= MAX_JOB_RESTARTS) {
+        runs++
+        startTime = Date.now() // Record the start time of the job
+
         await runSubstream(config, logger, { logFile: "logs.txt", outDirectory: "./" })
+
+        const elapsedTime = Date.now() - startTime
+        if (elapsedTime >= RESTART_DELAY) {
+          runs = 0 // Reset the counter if job runs for at least 60 seconds
+        }
       }
     },
     async stop() {

@@ -4,13 +4,16 @@ import { spawn } from "child_process"
 import { dirname } from "path"
 import { closeSync, openSync, constants, chmod } from "fs"
 import { IConfigComponent, ILoggerComponent } from "@well-known-components/interfaces"
-import { execCommand } from "./run-command"
 import { AppComponents } from "../types"
+import { execCommand } from "./run-command"
 
-const BINARY_OS = "substreams-sink-postgres_darwin_arm64" // TODO: In the CI it will be the linux one
+const DEFAULT_BINARY_OS = "substreams-sink-postgres_darwin_arm64" // for local development on M1 Macs, the CI will set its OS accordingly
+const DEFAULT_NETWORK = "polygon"
+const DEFAULT_DCL_SUBSTREAMS_RELEASE =
+  "https://github.com/decentraland/decentraland-substreams/releases/download/0.0.1/decentraland-substreams-v0.1.0.spkg"
 const SUBSTREAMS_RELEASE_URL = "https://api.github.com/repos/streamingfast/substreams-sink-postgres/releases/latest"
 
-async function getLatestReleaseUrl() {
+async function getLatestReleaseUrl(binaryOS: string) {
   const response = await fetch(SUBSTREAMS_RELEASE_URL)
   if (!response.ok) {
     throw new Error(`Failed to fetch latest release information: ${response.statusText}`)
@@ -18,7 +21,7 @@ async function getLatestReleaseUrl() {
 
   const releaseData = await response.json()
   const downloadURLs = releaseData.assets.map((asset: any) => asset.browser_download_url)
-  const downloadURL = downloadURLs.find((url: string) => url.includes(BINARY_OS))
+  const downloadURL = downloadURLs.find((url: string) => url.includes(binaryOS))
 
   return downloadURL
 }
@@ -36,8 +39,8 @@ async function setExecutablePermission(path: string) {
   })
 }
 
-async function downloadBinary() {
-  const binaryUrl = await getLatestReleaseUrl()
+async function downloadBinary(binaryOS: string) {
+  const binaryUrl = await getLatestReleaseUrl(binaryOS)
   const binaryPath = "./substreams-sink-postgres"
   const binaryResponse = await fetch(binaryUrl)
 
@@ -47,7 +50,6 @@ async function downloadBinary() {
 
   const binaryBuffer = await binaryResponse.buffer()
   await fs.writeFile(`${binaryPath}.tar.gz`, binaryBuffer) // downloads the tar.gz file
-  console.log("Binary downloaded successfully!")
 }
 
 async function extractTarGz(filePath: string) {
@@ -86,22 +88,37 @@ async function setAuthenticationKey(config: IConfigComponent) {
   }
 }
 
-async function getConfigVars(config: IConfigComponent) {
-  try {
-    const DB_CONNECTION_STRING = await config.requireString("DB_CONNECTION_STRING")
-    const NETWORK = (await config.getString("NETWORK")) || "polygon" // TODO: get from env
-    const FIREHOSE_SERVER_URI = `${NETWORK}.streamingfast.io:443` // TODO: get from env
-    const RELEASE_URI =
-      (await config.getString("SPKG_PATH")) ||
-      "https://github.com/decentraland/decentraland-substreams/releases/download/0.0.1/decentraland-substreams-v0.1.0.spkg"
+async function buildDbConnectionString(config: IConfigComponent) {
+  const dbUser = await config.requireString("PSQL_USER")
+  const dbPassword = await config.requireString("PSQL_PASSWORD")
+  const dbHost = await config.requireString("PSQL_HOST")
+  const dbPort = await config.requireString("PSQL_PORT")
+  const dbDatabaseName = await config.requireString("PSQL_DATABASE")
+  return `psql://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbDatabaseName}?sslmode=disable`
+}
 
-    return {
-      DB_CONNECTION_STRING,
-      FIREHOSE_SERVER_URI,
-      RELEASE_URI,
-    }
-  } catch (error) {
-    throw new Error("Failed to get config vars: DB_CONNECTION_STRING missing")
+function getEndpointForNetwork(network: string) {
+  switch (network) {
+    case "goerli":
+      return "goerli.eth"
+    case "mainnet":
+      return "mainnet.eth"
+    default:
+      return network // "polygon" stays the same
+  }
+}
+
+async function getConfigVars(config: IConfigComponent) {
+  const DB_CONNECTION_STRING = await buildDbConnectionString(config)
+  const network = (await config.getString("NETWORK")) || DEFAULT_NETWORK
+  const BINARY_OS = (await config.getString("BINARY_OS")) || DEFAULT_BINARY_OS
+  const RELEASE_URI = (await config.getString("SPKG_PATH")) || DEFAULT_DCL_SUBSTREAMS_RELEASE
+
+  return {
+    DB_CONNECTION_STRING,
+    FIREHOSE_SERVER_URI: `${getEndpointForNetwork(network)}.streamingfast.io:443`,
+    RELEASE_URI,
+    BINARY_OS,
   }
 }
 
@@ -122,17 +139,22 @@ export async function runSubstream(
 
   const binaryPath = "./substreams-sink-postgres"
 
+  const { DB_CONNECTION_STRING, FIREHOSE_SERVER_URI, RELEASE_URI, BINARY_OS } = await getConfigVars(config)
+
   try {
-    await fs.access(binaryPath, constants.F_OK) // check if binary exists
-    console.log("substreams-sink-postgres binary already exists!")
+    await fs.access(binaryPath, constants.F_OK) // check if `substreams-sink-postgres` binary exists
+    logger.log("substreams-sink-postgres binary already exists!")
   } catch (error: any) {
     // if binary doesn't exist, download it
     if (error.code === "ENOENT") {
-      console.log("Downloading substreams-sink-postgres binary...")
-      await downloadBinary()
+      logger.log("Downloading substreams-sink-postgres binary...")
+      await downloadBinary(BINARY_OS)
+      logger.log("Binary downloaded successfully!")
+      logger.log("Extracting binary tar.gz!")
       await extractTarGz(binaryPath) // extract tar.gz to binary
+      logger.log("Binary extracted successfully!")
     } else {
-      console.error("Error accessing binary:", error)
+      logger.error("Error accessing binary:", error)
       return
     }
   } finally {
@@ -140,8 +162,6 @@ export async function runSubstream(
     await setExecutablePermission(binaryPath) // set executable permission
     await setAuthenticationKey(config) // set authentication key
   }
-
-  const { DB_CONNECTION_STRING, FIREHOSE_SERVER_URI, RELEASE_URI } = await getConfigVars(config)
 
   const substreamsCommand = `./substreams-sink-postgres`
   const substreamsCommandArguments: string[] = [
