@@ -7,6 +7,7 @@ import { IConfigComponent, ILoggerComponent } from "@well-known-components/inter
 import { AppComponents } from "../types"
 import { execCommand } from "./run-command"
 
+const SINK_CLI_COMMAND = "./substreams-sink-postgres"
 const DEFAULT_BINARY_OS = "substreams-sink-postgres_darwin_arm64" // for local development on M1 Macs, the CI will set its OS accordingly
 const DEFAULT_NETWORK = "polygon"
 const DEFAULT_DCL_SUBSTREAMS_RELEASE =
@@ -88,13 +89,13 @@ async function setAuthenticationKey(config: IConfigComponent) {
   }
 }
 
-async function buildDbConnectionString(config: IConfigComponent) {
+async function buildDbConnectionString(config: IConfigComponent, schema: string) {
   const dbUser = await config.requireString("PSQL_USER")
   const dbPassword = await config.requireString("PSQL_PASSWORD")
   const dbHost = await config.requireString("PSQL_HOST")
   const dbPort = await config.requireString("PSQL_PORT")
   const dbDatabaseName = await config.requireString("PSQL_DATABASE")
-  return `psql://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbDatabaseName}?sslmode=disable`
+  return `psql://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbDatabaseName}?sslmode=disable&schema=${schema}`
 }
 
 function getEndpointForNetwork(network: string) {
@@ -108,8 +109,8 @@ function getEndpointForNetwork(network: string) {
   }
 }
 
-async function getConfigVars(config: IConfigComponent) {
-  const DB_CONNECTION_STRING = await buildDbConnectionString(config)
+async function getConfigVars(config: IConfigComponent, schema: string) {
+  const DB_CONNECTION_STRING = await buildDbConnectionString(config, schema)
   const network = (await config.getString("NETWORK")) || DEFAULT_NETWORK
   const BINARY_OS = (await config.getString("BINARY_OS")) || DEFAULT_BINARY_OS
   const RELEASE_URI = (await config.getString("SPKG_PATH")) || DEFAULT_DCL_SUBSTREAMS_RELEASE
@@ -122,7 +123,60 @@ async function getConfigVars(config: IConfigComponent) {
   }
 }
 
-export async function runSubstream(
+export async function runSetupSubstream(
+  schema: string,
+  components: Pick<AppComponents, "config">,
+  logger: ILoggerComponent.ILogger,
+  options?: {
+    timeout?: number
+  }
+) {
+  const { config } = components
+  const { DB_CONNECTION_STRING } = await getConfigVars(config, schema)
+  const substreamsCommandArguments: string[] = [
+    "setup",
+    DB_CONNECTION_STRING,
+    `schema-${await config.getString("NETWORK")}.sql`,
+  ]
+
+  const { exitPromise, child } = execCommand(
+    logger,
+    SINK_CLI_COMMAND,
+    substreamsCommandArguments,
+    process.env as any,
+    "./"
+  )
+
+  setTimeout(() => {
+    if (exitPromise.isPending) {
+      try {
+        if (!child.killed) {
+          logger.warn("Process did not finish", {
+            pid: child.pid?.toString() || "?",
+            command: SINK_CLI_COMMAND,
+            args: substreamsCommandArguments.join(" "),
+          } as any)
+          exitPromise.reject(new Error("Process did not finish"))
+          if (!child.kill("SIGKILL")) {
+            logger.error("Error trying to kill child process", {
+              pid: child.pid?.toString() || "?",
+              command: SINK_CLI_COMMAND,
+              args: substreamsCommandArguments.join(" "),
+            } as any)
+          }
+        }
+      } catch (err: any) {
+        console.log("err: ", err)
+        logger.error(err)
+      }
+    }
+  }, options?.timeout || 0)
+
+  return await exitPromise
+}
+
+export async function donwloadSubstreamsSink(
+  schema: string,
   components: Pick<AppComponents, "config">,
   logger: ILoggerComponent.ILogger,
   options: {
@@ -132,14 +186,12 @@ export async function runSubstream(
   }
 ) {
   const { config } = components
-  // touch logfile and create folders
   await fs.mkdir(dirname(options.logFile), { recursive: true })
   await fs.mkdir(options.outDirectory, { recursive: true })
   closeSync(openSync(options.logFile, "w"))
 
   const binaryPath = "./substreams-sink-postgres"
-
-  const { DB_CONNECTION_STRING, FIREHOSE_SERVER_URI, RELEASE_URI, BINARY_OS } = await getConfigVars(config)
+  const { BINARY_OS } = await getConfigVars(config, schema)
 
   try {
     await fs.access(binaryPath, constants.F_OK) // check if `substreams-sink-postgres` binary exists
@@ -162,8 +214,20 @@ export async function runSubstream(
     await setExecutablePermission(binaryPath) // set executable permission
     await setAuthenticationKey(config) // set authentication key
   }
+}
 
-  const substreamsCommand = `./substreams-sink-postgres`
+export async function runSubstream(
+  schema: string,
+  components: Pick<AppComponents, "config">,
+  logger: ILoggerComponent.ILogger,
+  options: {
+    logFile: string
+    outDirectory: string
+    timeout?: number
+  }
+) {
+  const { config } = components
+  const { DB_CONNECTION_STRING, FIREHOSE_SERVER_URI, RELEASE_URI, BINARY_OS } = await getConfigVars(config, schema)
   const substreamsCommandArguments: string[] = [
     "run",
     DB_CONNECTION_STRING,
@@ -175,7 +239,7 @@ export async function runSubstream(
 
   const { exitPromise, child } = execCommand(
     logger,
-    substreamsCommand,
+    SINK_CLI_COMMAND,
     substreamsCommandArguments,
     process.env as any,
     "./"
@@ -188,14 +252,14 @@ export async function runSubstream(
           if (!child.killed) {
             logger.warn("Process did not finish", {
               pid: child.pid?.toString() || "?",
-              command: substreamsCommand,
+              command: SINK_CLI_COMMAND,
               args: substreamsCommandArguments.join(" "),
             } as any)
             exitPromise.reject(new Error("Process did not finish"))
             if (!child.kill("SIGKILL")) {
               logger.error("Error trying to kill child process", {
                 pid: child.pid?.toString() || "?",
-                command: substreamsCommand,
+                command: SINK_CLI_COMMAND,
                 args: substreamsCommandArguments.join(" "),
               } as any)
             }
