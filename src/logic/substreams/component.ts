@@ -47,7 +47,7 @@ export async function createSubstreamsComponent(
         logger.log("Downloading substreams-sink-postgres binary...")
         await downloadBinary(BINARY_OS)
         logger.log("Binary downloaded successfully!")
-        logger.log("Extracting binary tar.gz!")
+        logger.log("Extracting binary tar.gz...")
         await extractTarGz(binaryPath) // extract tar.gz to binary
         logger.log("Binary extracted successfully!")
       } else {
