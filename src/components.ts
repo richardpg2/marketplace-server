@@ -1,3 +1,4 @@
+import path from "path"
 import { createDotEnvConfigComponent } from "@well-known-components/env-config-provider"
 import { createServerComponent, createStatusCheckComponent } from "@well-known-components/http-server"
 import { createLogComponent } from "@well-known-components/logger"
@@ -56,13 +57,31 @@ export async function initComponents(): Promise<AppComponents> {
   const server = await createServerComponent<GlobalContext>({ config, logs }, {})
   const statusChecks = await createStatusCheckComponent({ server, config })
   const fetch = await createFetchComponent()
-  const database = await createPgComponent({ config, logs, metrics })
+
+  const dbUser = await config.requireString("PG_COMPONENT_PSQL_USER")
+  const dbDatabaseName = await config.requireString("PG_COMPONENT_PSQL_DATABASE")
+  const dbPort = await config.requireString("PG_COMPONENT_PSQL_PORT")
+  const dbHost = await config.requireString("PG_COMPONENT_PSQL_HOST")
+  const dbPassword = await config.requireString("PG_COMPONENT_PSQL_PASSWORD")
+  const databaseUrl = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbDatabaseName}`
+  const database = await createPgComponent(
+    { config, logs, metrics },
+    {
+      migration: {
+        databaseUrl,
+        dir: path.resolve(__dirname, "migrations"),
+        migrationsTable: "pgmigrations",
+        ignorePattern: ".*\\.map",
+        direction: "up",
+      },
+    }
+  )
+  await database.start() // workaround so the migrations are executed before starting the other components
   const items = await createItemsComponent({ database })
   const collections = await createCollectionsComponent({ database })
   const catalog = await createCatalogComponent({ database })
   const substreams = await createSubstreamsComponent({ config, logs, database })
-
-  const synchronizationJobManager = createJobLifecycleManagerComponent(
+  const synchronizationJobManager = await createJobLifecycleManagerComponent(
     { logs },
     {
       jobManagerName: "SynchronizationJobManager",
