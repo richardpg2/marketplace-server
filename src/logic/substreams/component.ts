@@ -69,7 +69,8 @@ export async function createSubstreamsComponent(
       `schema-${await config.getString("NETWORK")}.sql`,
     ]
 
-    execCommand(logger, SINK_CLI_COMMAND, substreamsCommandArguments, process.env as any, "./")
+    const { exitPromise } = execCommand(logger, SINK_CLI_COMMAND, substreamsCommandArguments, process.env as any, "./")
+    return exitPromise
   }
 
   async function run(schema: string) {
@@ -81,8 +82,8 @@ export async function createSubstreamsComponent(
       RELEASE_URI,
       "db_out",
     ]
-
-    execCommand(logger, SINK_CLI_COMMAND, substreamsCommandArguments, process.env as any, "./")
+    const { exitPromise } = execCommand(logger, SINK_CLI_COMMAND, substreamsCommandArguments, process.env as any, "./")
+    return exitPromise
   }
 
   return {
