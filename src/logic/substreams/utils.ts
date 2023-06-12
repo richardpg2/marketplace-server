@@ -115,6 +115,6 @@ export async function setAuthenticationKey(config: IConfigComponent) {
     const SUBSTREAMS_API_TOKEN = await config.requireString("SUBSTREAMS_API_TOKEN")
     process.env.SUBSTREAMS_API_TOKEN = SUBSTREAMS_API_TOKEN
   } catch (error) {
-    throw new Error("Failed to set authentication key: SUBSTREAMS_API_TOKEN is not set")
+    throw new Error("Failed to set authentication key SUBSTREAMS_API_TOKEN is not set")
   }
 }
