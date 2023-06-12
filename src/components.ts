@@ -10,24 +10,31 @@ import { createItemsComponent } from "./logic/items/component"
 import { createCollectionsComponent } from "./logic/collections/component"
 import { createCatalogComponent } from "./logic/catalog/component"
 import { createJobLifecycleManagerComponent } from "./job-lifecycle-manager"
-import { runSubstream } from "./logic/run-substream"
-import { ILoggerComponent } from "@well-known-components/interfaces"
+import { createSubstreamsComponent } from "./logic/substreams/component"
+import { ISubstreamsComponent } from "./logic/substreams/types"
 
 // Sets a maximun amount of times the job can be restarted to quickly to avoid infinite loops
 const MAX_JOB_RESTARTS = 5
 const RESTART_DELAY = 60000 // 60 seconds
 
-function createCliJob(config: Pick<AppComponents, "config">, logger: ILoggerComponent.ILogger) {
+function createCliJob(substreams: ISubstreamsComponent) {
   let runs = 0
   let startTime: number | null = null
   let stopped = false
   return {
     async start() {
+      const schema = await substreams.init({
+        logFile: "logs.txt",
+        outDirectory: "./",
+      })
+
+      await substreams.download()
+      await substreams.setup(schema)
       while (!stopped && runs <= MAX_JOB_RESTARTS) {
         runs++
         startTime = Date.now() // Record the start time of the job
 
-        await runSubstream(config, logger, { logFile: "logs.txt", outDirectory: "./" })
+        await substreams.run(schema)
 
         const elapsedTime = Date.now() - startTime
         if (elapsedTime >= RESTART_DELAY) {
@@ -49,18 +56,18 @@ export async function initComponents(): Promise<AppComponents> {
   const server = await createServerComponent<GlobalContext>({ config, logs }, {})
   const statusChecks = await createStatusCheckComponent({ server, config })
   const fetch = await createFetchComponent()
-
   const database = await createPgComponent({ config, logs, metrics })
   const items = await createItemsComponent({ database })
   const collections = await createCollectionsComponent({ database })
   const catalog = await createCatalogComponent({ database })
+  const substreams = await createSubstreamsComponent({ config, logs, database })
 
   const synchronizationJobManager = createJobLifecycleManagerComponent(
     { logs },
     {
       jobManagerName: "SynchronizationJobManager",
       createJob() {
-        return createCliJob({ config }, logs.getLogger("log"))
+        return createCliJob(substreams)
       },
     }
   )
