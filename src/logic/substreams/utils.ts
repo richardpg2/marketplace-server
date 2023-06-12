@@ -7,7 +7,7 @@ import { IConfigComponent } from "@well-known-components/interfaces"
 export const DEFAULT_BINARY_OS = "substreams-sink-postgres_darwin_arm64" // for local development on M1 Macs, the CI will set its OS accordingly
 const DEFAULT_NETWORK = "polygon"
 const DEFAULT_DCL_SUBSTREAMS_RELEASE =
-  "https://github.com/decentraland/decentraland-substreams/releases/download/0.0.1/decentraland-substreams-v0.1.0.spkg"
+  "https://github.com/decentraland/decentraland-substreams/releases/download/0.0.3/decentraland-substreams-v0.0.3.spkg"
 const SUBSTREAMS_RELEASE_URL = "https://api.github.com/repos/streamingfast/substreams-sink-postgres/releases/latest"
 
 async function buildDbConnectionString(config: IConfigComponent, schema: string) {
