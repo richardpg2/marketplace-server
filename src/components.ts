@@ -2,7 +2,6 @@ import { createDotEnvConfigComponent } from "@well-known-components/env-config-p
 import { createServerComponent, createStatusCheckComponent } from "@well-known-components/http-server"
 import { createLogComponent } from "@well-known-components/logger"
 import { createPgComponent } from "@well-known-components/pg-component"
-import { ILoggerComponent } from "@well-known-components/interfaces"
 import { createFetchComponent } from "./adapters/fetch"
 import { createMetricsComponent, instrumentHttpServerWithMetrics } from "@well-known-components/metrics"
 import { AppComponents, GlobalContext } from "./types"
@@ -11,34 +10,31 @@ import { createItemsComponent } from "./logic/items/component"
 import { createCollectionsComponent } from "./logic/collections/component"
 import { createCatalogComponent } from "./logic/catalog/component"
 import { createJobLifecycleManagerComponent } from "./job-lifecycle-manager"
-import { donwloadSubstreamsSink, runSetupSubstream, runSubstream } from "./logic/run-substream"
-import { createNewSchema } from "./logic/substreams/queries"
+import { createSubstreamsComponent } from "./logic/substreams/component"
+import { ISubstreamsComponent } from "./logic/substreams/types"
 
 // Sets a maximun amount of times the job can be restarted to quickly to avoid infinite loops
 const MAX_JOB_RESTARTS = 5
 const RESTART_DELAY = 60000 // 60 seconds
 
-function createCliJob(components: Pick<AppComponents, "config" | "database">, logger: ILoggerComponent.ILogger) {
-  const { config } = components
+function createCliJob(substreams: ISubstreamsComponent) {
   let runs = 0
   let startTime: number | null = null
   let stopped = false
   return {
     async start() {
-      const network = await config.requireString("NETWORK")
-      const options = {
+      const schema = await substreams.init({
         logFile: "logs.txt",
         outDirectory: "./",
-      }
+      })
 
-      const schema = await createNewSchema(components.database, network)
-      await donwloadSubstreamsSink(schema, { config }, logger, options)
-      await runSetupSubstream(schema, { config }, logger)
+      await substreams.download()
+      await substreams.setup(schema)
       while (!stopped && runs <= MAX_JOB_RESTARTS) {
         runs++
         startTime = Date.now() // Record the start time of the job
 
-        await runSubstream(schema, components, logger, options)
+        await substreams.run(schema)
 
         const elapsedTime = Date.now() - startTime
         if (elapsedTime >= RESTART_DELAY) {
@@ -64,13 +60,14 @@ export async function initComponents(): Promise<AppComponents> {
   const items = await createItemsComponent({ database })
   const collections = await createCollectionsComponent({ database })
   const catalog = await createCatalogComponent({ database })
+  const substreams = await createSubstreamsComponent({ config, logs, database })
 
   const synchronizationJobManager = createJobLifecycleManagerComponent(
     { logs },
     {
       jobManagerName: "SynchronizationJobManager",
       createJob() {
-        return createCliJob({ config, database }, logs.getLogger("log"))
+        return createCliJob(substreams)
       },
     }
   )
