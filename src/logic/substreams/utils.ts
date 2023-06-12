@@ -11,11 +11,11 @@ const DEFAULT_DCL_SUBSTREAMS_RELEASE =
 const SUBSTREAMS_RELEASE_URL = "https://api.github.com/repos/streamingfast/substreams-sink-postgres/releases/latest"
 
 async function buildDbConnectionString(config: IConfigComponent, schema: string) {
-  const dbUser = await config.requireString("PSQL_USER")
-  const dbPassword = await config.requireString("PSQL_PASSWORD")
-  const dbHost = await config.requireString("PSQL_HOST")
-  const dbPort = await config.requireString("PSQL_PORT")
-  const dbDatabaseName = await config.requireString("PSQL_DATABASE")
+  const dbUser = await config.requireString("PG_COMPONENT_PSQL_USER")
+  const dbPassword = await config.requireString("PG_COMPONENT_PSQL_PASSWORD")
+  const dbHost = await config.requireString("PG_COMPONENT_PSQL_HOST")
+  const dbPort = await config.requireString("PG_COMPONENT_PSQL_PORT")
+  const dbDatabaseName = await config.requireString("PG_COMPONENT_PSQL_DATABASE")
   return `psql://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbDatabaseName}?sslmode=disable&schema=${schema}`
 }
 

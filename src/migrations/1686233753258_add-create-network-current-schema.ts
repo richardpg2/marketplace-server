@@ -20,6 +20,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {
-  pgm.dropTable("substreams.network_schema")
+  pgm.dropTable({ schema: "substreams", name: "network_schema" })
   pgm.dropSchema("substreams")
 }
