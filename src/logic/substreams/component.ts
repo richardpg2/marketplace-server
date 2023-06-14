@@ -1,3 +1,4 @@
+import fetch from "node-fetch"
 import * as fs from "fs/promises"
 import { closeSync, openSync, constants } from "fs"
 import { dirname } from "path"
@@ -63,11 +64,7 @@ export async function createSubstreamsComponent(
 
   async function setup(schema: string) {
     const { DB_CONNECTION_STRING } = await getConfigVars(config, schema)
-    const substreamsCommandArguments: string[] = [
-      "setup",
-      DB_CONNECTION_STRING,
-      `schema-${await config.getString("NETWORK")}.sql`,
-    ]
+    const substreamsCommandArguments: string[] = ["setup", DB_CONNECTION_STRING, "schema.sql"]
 
     const { exitPromise } = execCommand(logger, SINK_CLI_COMMAND, substreamsCommandArguments, process.env as any, "./")
     return exitPromise
@@ -86,10 +83,41 @@ export async function createSubstreamsComponent(
     return exitPromise
   }
 
+  // the seconds can be in scientific notation, so we need to convert it to a number
+  function convertScientificNotation(number: number) {
+    const scientificRegex = /^([\d.]+)e([\+,-])(\d+)$/
+    const match = number.toString().match(scientificRegex)
+
+    if (match && match.length === 4) {
+      const base = parseFloat(match[1])
+      const exponent = parseInt(match[2] + match[3])
+      return base * Math.pow(10, exponent)
+    } else {
+      return number
+    }
+  }
+
+  async function ready() {
+    const THRESHOLD = 120 // number of seconds away from head block time
+    const response = await fetch("http://0.0.0.0:9102") // hit prometheus metrics endpoint
+    const metrics = await response.text()
+    const regex = /head_block_time_drift{app="substreams_sink"} ([\d.e+]+)/
+    const match = metrics.match(regex)
+
+    if (match && match[1]) {
+      const headBlockTimeDrift = convertScientificNotation(parseFloat(match[1]))
+      return { ready: headBlockTimeDrift < THRESHOLD, delay: headBlockTimeDrift }
+    } else {
+      console.log("head_block_time_drift not found in metrics.")
+    }
+    return { ready: false, delay: 0 }
+  }
+
   return {
     init,
     download,
     setup,
     run,
+    ready,
   }
 }

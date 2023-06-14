@@ -105,5 +105,6 @@ export async function initComponents(): Promise<AppComponents> {
     collections,
     catalog,
     synchronizationJobManager,
+    substreams,
   }
 }

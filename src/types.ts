@@ -12,6 +12,7 @@ import { ICatalogComponent } from "./logic/catalog/types"
 import { ICollectionsComponent } from "./logic/collections/types"
 import { IItemsComponent } from "./logic/items/types"
 import { metricDeclarations } from "./metrics"
+import { ISubstreamsComponent } from "./logic/substreams/types"
 
 export type GlobalContext = {
   components: BaseComponents
@@ -29,6 +30,7 @@ export type BaseComponents = {
   collections: ICollectionsComponent
   catalog: ICatalogComponent
   synchronizationJobManager: JobLifecycleManagerComponent
+  substreams: ISubstreamsComponent
 }
 
 // components used in runtime

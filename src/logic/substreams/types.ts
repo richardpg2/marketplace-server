@@ -3,4 +3,5 @@ export type ISubstreamsComponent = {
   download(): Promise<void>
   setup(schema: string): Promise<number | null>
   run(schema: string): Promise<number | null>
+  ready(): Promise<{ ready: boolean; delay: number }>
 }
