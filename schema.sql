@@ -4,10 +4,12 @@ DECLARE
   schema_name TEXT;
 BEGIN
   -- Retrieve the entity_schema value using the SELECT query
-  SELECT entity_schema
-  INTO schema_name
-  FROM substreams.network_schema
-  WHERE network = 'mainnet';
+  	SELECT information.schema_name
+	INTO schema_name
+	FROM information_schema.schemata as information
+	WHERE information.schema_name LIKE 'dcl' || '%'
+	ORDER BY CAST(SUBSTRING(information.schema_name FROM 'dcl([0-9]+)') AS INTEGER) 
+	desc LIMIT 1;
 
   -- Set the current working schema using the retrieved entity_schema value
   EXECUTE 'SET search_path TO ' || schema_name;

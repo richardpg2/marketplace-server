@@ -18,7 +18,7 @@ jobs:
       matrix:
         network: [eth, polygon]
         env: [dev, stg]
-    name: "Deploy to: ${{ matrix.env }}"
+    name: "Deploy to: ${{ matrix.network }}-${{ matrix.env }}"
     runs-on: ubuntu-latest
     environment: ${{ matrix.env }}
     steps:
